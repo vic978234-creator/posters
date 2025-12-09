@@ -1,7 +1,6 @@
 import streamlit as st
 import openai
 import requests
-from PIL import Image
 from io import BytesIO
 
 # --- 페이지 설정 ---
@@ -24,11 +23,16 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# --- API 키 설정 ---
-# 👇 요청하신 새로운 키를 여기에 넣었습니다.
-# 주의: 이 파일은 절대 인터넷에 공유하지 마세요.
-key_for_testing = "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"
-openai.api_key = key_for_testing
+# --- API 키 설정 (secrets.toml에서 가져오기) ---
+try:
+    # 🔑 여기서 secrets.toml 파일에 저장된 키를 불러옵니다.
+    openai.api_key = st.secrets["OPENAI_API_KEY"]
+except FileNotFoundError:
+    st.error("API 키를 찾을 수 없습니다. .streamlit/secrets.toml 파일을 만들어주세요.")
+    st.stop()
+except KeyError:
+    st.error("secrets.toml 파일 안에 OPENAI_API_KEY 항목이 없습니다.")
+    st.stop()
 
 
 # --- 헬퍼 함수: 이미지 다운로드용 ---
@@ -44,9 +48,9 @@ def get_image_bytes(url):
 
 # --- 핵심 함수: DALL-E 3 이미지 생성 ---
 def generate_poster(prompt_concept, style, aspect_ratio):
+    # 전역 설정된 키를 사용해 클라이언트 생성
     client = openai.OpenAI(api_key=openai.api_key)
 
-    # 스타일 프롬프트
     style_prompts = {
         "미니멀리즘 (Minimalist)": "minimalist graphic design poster, clean lines, restrained color palette, lots of negative space, modern typography.",
         "레트로 퓨처리즘 (Retro Futurism)": "retro-futuristic poster art, 1980s sci-fi aesthetic, neon colors, chrome textures, synthwave vibe, bold stylized typography.",
@@ -57,7 +61,6 @@ def generate_poster(prompt_concept, style, aspect_ratio):
         "추상 표현주의 (Abstract)": "abstract expressionism poster art, energetic brushstrokes, splashes of color, emotive, non-representational forms, avant-garde typography."
     }
 
-    # 비율 설정
     ratio_map = {
         "세로형 (Portrait, 9:16)": "1024x1792",
         "정사각형 (Square, 1:1)": "1024x1024",
@@ -65,7 +68,6 @@ def generate_poster(prompt_concept, style, aspect_ratio):
     }
     size = ratio_map[aspect_ratio]
 
-    # 프롬프트 조합
     full_prompt = (
         f"A professionally designed poster titled or themed '{prompt_concept}'. "
         f"Style defined as: {style_prompts[style]} "
